@@ -155,7 +155,7 @@ const App = () => {
 
     const boostBestKingdom = (randomArray, province) => {
         if (province!== undefined && Object.values(province).length > 26) {
-            for (let i = 0; i < 10; i++)
+            for (let i = 0; i < 5; i++)
                 randomArray.push(Object.keys(province)[0])
         }
     }
@@ -168,8 +168,8 @@ const App = () => {
     const battle = (randomProvince, randomProvinceName, closestProvince, closestProvinceName) => {
         let randomArray = [];
         const newProvincesMap = {...provincesMap};
-        Object.values(randomProvince).forEach(p => randomArray.push(Object.keys(randomProvince)[0]))
-        Object.values(closestProvince).forEach(p => randomArray.push(Object.keys(closestProvince)[0]))
+        Object.values(randomProvince)[0].forEach(p => randomArray.push(Object.keys(randomProvince)[0]))
+        Object.values(closestProvince)[0].forEach(p => randomArray.push(Object.keys(closestProvince)[0]))
 
         boostMostVoted(randomProvinceName, randomProvince, randomArray);
         boostMostVoted(closestProvinceName, closestProvince, randomArray);
@@ -190,7 +190,7 @@ const App = () => {
         setProvincesMap(newProvincesMap);
 
         const filteredProvincesMap = Object.fromEntries(
-            Object.entries(newProvincesMap).filter(([color, provinces]) => provinces.length > 0)
+            Object.entries(newProvincesMap).filter(([_, provinces]) => provinces.length > 0)
         );
         setProvincesMap(filteredProvincesMap);
 

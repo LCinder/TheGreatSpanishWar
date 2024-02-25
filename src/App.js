@@ -1,6 +1,9 @@
 import {useEffect, useState} from "react";
 import html2canvas from "html2canvas";
 import {saveAs} from 'file-saver';
+import Highcharts from 'highcharts';
+import HighchartsMap from 'highcharts/modules/map';
+HighchartsMap(Highcharts);
 
 const distance = (lat1, lon1, lat2, lon2) => {
   let r = 6371;

@@ -4,6 +4,7 @@ import {saveAs} from 'file-saver';
 import Highcharts from 'highcharts';
 import HighchartsMap from 'highcharts/modules/map';
 
+const JSZip = require('jszip');
 HighchartsMap(Highcharts);
 
 const distance = (lat1, lon1, lat2, lon2) => {
@@ -44,7 +45,10 @@ const App = () => {
     const [text, setText] = useState("");
     const [isChecked, setIsChecked] = useState(false);
     const [provincesMap, setProvincesMap] = useState({});
-    const mostVotedProvinces = ["Granada"]
+    const mostVotedProvinces = ["Granada"];
+    const RIOT_PROBABILITY = 30;
+    const [exportPromises, setExportPromises] = useState([]);
+    const [imagePaths, setImagePaths] = useState([]);
 
     useEffect(() => {
         if (next === 0) {
@@ -100,16 +104,49 @@ const App = () => {
             dataLabels: {
                 enabled: true,
                 formatter: function () {
-                    const capitalCities = Object.values(provincesMap).sort((a, b) => b.length - a.length)
-                        .slice(0, 10).flatMap(p => p[0]).join(",");
-                    return capitalCities.includes(this.point.name) ? this.point.name : "";
+                    if (next === 0)
+                        return this.point.name;
+                    else {
+                        const capitalCities = Object.values(provincesMap).sort((a, b) => b.length - a.length)
+                            .slice(0, 10).flatMap(p => p[0]).join(",");
+                        return capitalCities.includes(this.point.name) ? this.point.name : "";
+                    }
                 }
             }
         }]
     };
 
-    function drawMap() {
+    const drawMap = () => {
         Highcharts.mapChart("map", chartOptions);
+    }
+
+    const riot = () => {
+        const random = Math.floor(Math.random() * RIOT_PROBABILITY);
+
+        if (random === 1) {
+            const newProvincesMap = {...provincesMap};
+
+            const randomColor = chooseRandomColor();
+            const cities = Object.values(newProvincesMap[randomColor]);
+            const randomCity = Math.floor(Math.random() * cities.length);
+            const previousCity = cities[randomCity];
+            const capitalCity = cities[0];
+
+            if (previousCity !== capitalCity && cities.length > 5) {
+                let temp = cities[randomCity];
+                cities[randomCity] = cities[0];
+                cities[0] = temp;
+
+                newProvincesMap[randomColor] = cities;
+                setProvincesMap(newProvincesMap);
+                console.log(`¡Ha habido un motín! ${previousCity} se ha revelado contra la capital ${capitalCity} y ha tomado el control.`)
+
+                setText(`¡Ha habido un motín! ${previousCity} se ha revelado contra la capital ${capitalCity} y ha tomado el control.`);
+                return true;
+            }
+        }
+
+        return false
     }
 
     const play = () => {
@@ -121,26 +158,29 @@ const App = () => {
             let closestProvinceName;
             let closestProvince;
             let randomProvince;
-
             drawMap();
-            do {
-                randomProvinceColor = chooseRandomColor();
-                randomProvinceName = getRandomProvince(provincesMap[randomProvinceColor])
-                randomProvince = {[randomProvinceColor]: provincesMap[randomProvinceColor]}
-                const closestProvinces = getClosestProvinces(randomProvinceName);
-                closestProvinceName = chooseRandomProvince(closestProvinces).properties.name
-                closestProvinceColor = Object.keys(provincesMap).find(key => provincesMap[key].includes(closestProvinceName));
-                closestProvince = {[closestProvinceColor]: provincesMap[closestProvinceColor]}
-            } while (randomProvinceColor === closestProvinceColor)
 
-            battle(randomProvince, randomProvinceName, closestProvince, closestProvinceName)
+            const isRiot = riot();
 
-            if (isChecked) {
-                exportToPng();
+            if (!isRiot) {
+                do {
+                    randomProvinceColor = chooseRandomColor();
+                    randomProvinceName = getRandomProvince(provincesMap[randomProvinceColor])
+                    randomProvince = {[randomProvinceColor]: provincesMap[randomProvinceColor]}
+                    const closestProvinces = getClosestProvinces(randomProvinceName);
+                    closestProvinceName = chooseRandomProvince(closestProvinces).properties.name
+                    closestProvinceColor = Object.keys(provincesMap).find(key => provincesMap[key].includes(closestProvinceName));
+                    closestProvince = {[closestProvinceColor]: provincesMap[closestProvinceColor]}
+                } while (randomProvinceColor === closestProvinceColor)
+
+                battle(randomProvince, randomProvinceName, closestProvince, closestProvinceName)
+
+                if (isChecked) {
+                    setExportPromises([...exportPromises, exportToPng()]);
+                    console.log(exportPromises.length)
+                }
             }
-
             setNext(next + 1);
-
         }
 
         if (Object.entries(provincesMap).length === 1) {
@@ -164,7 +204,7 @@ const App = () => {
     };
 
     const boostBestKingdom = (randomArray, province) => {
-        if (province!== undefined && Object.values(province).length > 26) {
+        if (province !== undefined && Object.values(province).length > 26) {
             for (let i = 0; i < 2; i++)
                 randomArray.push(Object.keys(province)[0])
         }
@@ -183,8 +223,8 @@ const App = () => {
 
         boostMostVoted(randomProvinceName, randomProvince, randomArray);
         boostMostVoted(closestProvinceName, closestProvince, randomArray);
-        //boostBestKingdom(randomProvince)
-        //boostBestKingdom(closestProvince)
+        boostBestKingdom(randomProvince)
+        boostBestKingdom(closestProvince)
 
         const randomNumber = Math.floor(Math.random() * randomArray.length);
         const winnerColor = randomArray[randomNumber];
@@ -229,15 +269,52 @@ const App = () => {
         return [];
     }
 
+    const exportAllData = () => {
+        console.log(exportPromises.length)
+        Promise.all(exportPromises)
+            .then(() => {
+                exportImagesToZip();
+            })
+            .catch(error => {
+                console.error("Error: ", error);
+            });
+    };
+
     const exportToPng = () => {
         const chartElement = document.querySelector("#total");
 
-        html2canvas(chartElement).then(canvas => {
-            canvas.toBlob(blob => {
-                saveAs(blob, `./image-${next}`);
-            }, 'image/png');
+        return new Promise((resolve, reject) => {
+            html2canvas(chartElement).then(canvas => {
+                canvas.toBlob(blob => {
+                    const imagePath = `image-${next}.png`;
+                    setImagePaths([...imagePaths, { path: imagePath, blob }]);
+                    resolve();
+                }, 'image/png');
+            }).catch(error => {
+                reject(error);
+            });
         });
-    }
+    };
+
+    const exportImagesToZip = () => {
+        if (imagePaths.length === 0) {
+            console.log("No images to export");
+            return;
+        }
+
+        const zip = new JSZip();
+
+        imagePaths.forEach(image => {
+            zip.file(image.path, image.blob);
+        });
+
+        zip.generateAsync({type: "blob"}).then(content => {
+            const zipName = "images.zip";
+            saveAs(content, zipName);
+        }).catch(error => {
+            console.error("Error:", error);
+        });
+    };
 
     return (
         <div>
@@ -266,8 +343,7 @@ const App = () => {
                 </div>
             </div>
             <button onClick={() => play()}>Next</button>
-            <button onClick={() => exportToPng()}>Export Image</button>
-            <button onClick={() => setNext(-1)}>Stop</button>
+            <button onClick={() => exportAllData()}>Export Image</button>
             <div>
                 <p>Export all images</p>
                 <input type="checkbox" checked={isChecked} onChange={() => setIsChecked(!isChecked)}/>

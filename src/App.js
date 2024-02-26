@@ -99,8 +99,12 @@ const App = () => {
             keys: ["name", "color"],
             dataLabels: {
                 enabled: true,
-                format: "{point.name}"
-            },
+                formatter: function () {
+                    const capitalCities = Object.values(provincesMap).sort((a, b) => b.length - a.length)
+                        .slice(0, 10).flatMap(p => p[0]).join(",");
+                    return capitalCities.includes(this.point.name) ? this.point.name : "";
+                }
+            }
         }]
     };
 
@@ -136,6 +140,12 @@ const App = () => {
             }
 
             setNext(next + 1);
+
+        }
+
+        if (Object.entries(provincesMap).length === 1) {
+            setText(`¡${Object.values(provincesMap)[0][0]} ha ganado la guerra!`)
+            drawMap();
         }
     };
 
@@ -155,7 +165,7 @@ const App = () => {
 
     const boostBestKingdom = (randomArray, province) => {
         if (province!== undefined && Object.values(province).length > 26) {
-            for (let i = 0; i < 5; i++)
+            for (let i = 0; i < 2; i++)
                 randomArray.push(Object.keys(province)[0])
         }
     }
@@ -173,8 +183,8 @@ const App = () => {
 
         boostMostVoted(randomProvinceName, randomProvince, randomArray);
         boostMostVoted(closestProvinceName, closestProvince, randomArray);
-        boostBestKingdom(randomProvince)
-        boostBestKingdom(closestProvince)
+        //boostBestKingdom(randomProvince)
+        //boostBestKingdom(closestProvince)
 
         const randomNumber = Math.floor(Math.random() * randomArray.length);
         const winnerColor = randomArray[randomNumber];

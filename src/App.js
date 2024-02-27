@@ -44,6 +44,7 @@ const App = () => {
     const [next, setNext] = useState(0);
     const [text, setText] = useState("");
     const [isChecked, setIsChecked] = useState(false);
+    const [finished, setFinished] = useState(false);
     const [provincesMap, setProvincesMap] = useState({});
     const mostVotedProvinces = ["Granada"];
     const RIOT_PROBABILITY = 30;
@@ -73,14 +74,32 @@ const App = () => {
         return provincesInArray[random];
     }
 
+    const getKeys = (array) => {
+        return Object.keys(array);
+    }
+
+    const getEntries = (array) => {
+        return Object.entries(array);
+    }
+
+    const getValues = (array) => {
+        return Object.values(array);
+    }
+
     const chartOptions = {
         chart: {
             map: data,
-            width: window.innerWidth,
+            width: window.innerWidth - 300,
             height: window.innerHeight,
             backgroundColor: "#76a3ff"
         },
-        title: null,
+        title: {
+            text: `${text}`,
+            style: {
+                color: "#fff",
+                fontSize: 25
+            }
+        },
         mapView: {
             projection: {
                 name: "WebMercator"
@@ -93,7 +112,7 @@ const App = () => {
         },
         series: [{
             showInLegend: false,
-            data: Object.keys(provincesMap).reduce((acc, color) => {
+            data: getKeys(provincesMap).reduce((acc, color) => {
                 provincesMap[color].forEach(province => {
                     acc.push({name: province, color: color});
                 });
@@ -127,7 +146,7 @@ const App = () => {
             const newProvincesMap = {...provincesMap};
 
             const randomColor = chooseRandomColor();
-            const cities = Object.values(newProvincesMap[randomColor]);
+            const cities = getValues(newProvincesMap[randomColor]);
             const randomCity = Math.floor(Math.random() * cities.length);
             const previousCity = cities[randomCity];
             const capitalCity = cities[0];
@@ -150,14 +169,16 @@ const App = () => {
     }
 
     const play = () => {
-        if (Object.entries(provincesMap).length > 1) {
+        const provincesMapLength = getEntries(provincesMap).length;
+
+        if (provincesMapLength > 1) {
             let randomProvinceColor;
             let closestProvinceColor;
-
             let randomProvinceName;
             let closestProvinceName;
             let closestProvince;
             let randomProvince;
+
             drawMap();
 
             const isRiot = riot();
@@ -169,29 +190,31 @@ const App = () => {
                     randomProvince = {[randomProvinceColor]: provincesMap[randomProvinceColor]}
                     const closestProvinces = getClosestProvinces(randomProvinceName);
                     closestProvinceName = chooseRandomProvince(closestProvinces).properties.name
-                    closestProvinceColor = Object.keys(provincesMap).find(key => provincesMap[key].includes(closestProvinceName));
+                    closestProvinceColor = getKeys(provincesMap).find(key => provincesMap[key].includes(closestProvinceName));
                     closestProvince = {[closestProvinceColor]: provincesMap[closestProvinceColor]}
                 } while (randomProvinceColor === closestProvinceColor)
 
                 battle(randomProvince, randomProvinceName, closestProvince, closestProvinceName)
 
-                if (isChecked) {
-                    setExportPromises([...exportPromises, exportToPng()]);
-                    console.log(exportPromises.length)
-                }
             }
-            setNext(next + 1);
+        } else {
+            setText(`¡${getValues(provincesMap)[0][0]} ha ganado la guerra!`)
+            drawMap();
+            setFinished(true);
         }
 
-        if (Object.entries(provincesMap).length === 1) {
-            setText(`¡${Object.values(provincesMap)[0][0]} ha ganado la guerra!`)
-            drawMap();
+        if (isChecked) {
+            setExportPromises(prevPromises => [...prevPromises, exportToPng()]);
+        }
+
+        if(!finished) {
+            setNext(next + 1);
         }
     };
 
     const chooseRandomColor = () => {
-        const random = Math.floor(Math.random() * Object.entries(provincesMap).length);
-        return Object.entries(provincesMap)[random][0];
+        const random = Math.floor(Math.random() * getEntries(provincesMap).length);
+        return getEntries(provincesMap)[random][0];
     }
 
     const chooseRandomProvince = (provinces) => {
@@ -200,26 +223,30 @@ const App = () => {
     }
 
     const randomColor = () => {
-        return '#' + Math.floor(Math.random() * 16777215).toString(16);
+        const r = Math.floor(Math.random() * 156) + 100;
+        const g = Math.floor(Math.random() * 156) + 100;
+        const b = Math.floor(Math.random() * 156) + 100;
+
+        return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
     };
 
     const boostBestKingdom = (randomArray, province) => {
-        if (province !== undefined && Object.values(province).length > 26) {
+        if (province !== undefined && getValues(province).length > 26) {
             for (let i = 0; i < 2; i++)
-                randomArray.push(Object.keys(province)[0])
+                randomArray.push(getKeys(province)[0])
         }
     }
 
     const boostMostVoted = (randomProvinceName, randomProvince, randomArray) => {
         if (mostVotedProvinces.includes(randomProvinceName))
-            randomArray.push(Object.keys(randomProvince)[0])
+            randomArray.push(getKeys(randomProvince)[0])
     }
 
     const battle = (randomProvince, randomProvinceName, closestProvince, closestProvinceName) => {
         let randomArray = [];
         const newProvincesMap = {...provincesMap};
-        Object.values(randomProvince)[0].forEach(p => randomArray.push(Object.keys(randomProvince)[0]))
-        Object.values(closestProvince)[0].forEach(p => randomArray.push(Object.keys(closestProvince)[0]))
+        getValues(randomProvince)[0].forEach(p => randomArray.push(getKeys(randomProvince)[0]))
+        getValues(closestProvince)[0].forEach(p => randomArray.push(getKeys(closestProvince)[0]))
 
         boostMostVoted(randomProvinceName, randomProvince, randomArray);
         boostMostVoted(closestProvinceName, closestProvince, randomArray);
@@ -228,9 +255,9 @@ const App = () => {
 
         const randomNumber = Math.floor(Math.random() * randomArray.length);
         const winnerColor = randomArray[randomNumber];
-        const loserColor = winnerColor !== Object.keys(randomProvince)[0]
-            ? Object.keys(randomProvince)[0]
-            : Object.keys(closestProvince)[0];
+        const loserColor = winnerColor !== getKeys(randomProvince)[0]
+            ? getKeys(randomProvince)[0]
+            : getKeys(closestProvince)[0];
         const loserName = provincesMap[loserColor].includes(closestProvinceName)
             ? closestProvinceName
             : randomProvinceName
@@ -240,10 +267,10 @@ const App = () => {
         setProvincesMap(newProvincesMap);
 
         const filteredProvincesMap = Object.fromEntries(
-            Object.entries(newProvincesMap).filter(([_, provinces]) => provinces.length > 0)
+            getEntries(newProvincesMap).filter(([_, provinces]) => provinces.length > 0)
         );
-        setProvincesMap(filteredProvincesMap);
 
+        setProvincesMap(filteredProvincesMap);
         setText(`Día ${next} de la Gran Guerra. ${randomProvinceName} ataca a ${closestProvinceName}. Pierde ${loserName}`)
     }
 
@@ -269,9 +296,8 @@ const App = () => {
         return [];
     }
 
-    const exportAllData = () => {
-        console.log(exportPromises.length)
-        Promise.all(exportPromises)
+    const exportAllData = async () => {
+        await Promise.all(exportPromises)
             .then(() => {
                 exportImagesToZip();
             })
@@ -287,7 +313,7 @@ const App = () => {
             html2canvas(chartElement).then(canvas => {
                 canvas.toBlob(blob => {
                     const imagePath = `image-${next}.png`;
-                    setImagePaths([...imagePaths, { path: imagePath, blob }]);
+                    setImagePaths(prevPaths => [...prevPaths, {path: imagePath, blob}]);
                     resolve();
                 }, 'image/png');
             }).catch(error => {
@@ -318,33 +344,30 @@ const App = () => {
 
     return (
         <div>
-            <div style={{backgroundColor: "#76a3ff"}} id="total">
-                <div style={{display: "flex", flexWrap: "wrap", justifyContent: "center"}}>
-                    {Object.values(provincesMap).sort((a, b) => b.length - a.length).slice(0, 10)
+            <div id="total" style={{display: "flex", alignItems: "center", backgroundColor: "#76a3ff"}}>
+                <div style={{flexWrap: "wrap", marginLeft: 100}}>
+                    {getValues(provincesMap).sort((a, b) => b.length - a.length).slice(0, 10)
                         .map((p, index) => {
-                            const color = Object.keys(provincesMap).find(key => provincesMap[key].includes(p[0]));
+                            const color = getKeys(provincesMap).find(key => provincesMap[key].includes(p[0]));
                             return (
-                                <p key={index} style={{
-                                    color: color,
-                                    fontWeight: "bold",
-                                    marginRight: 20,
-                                    marginTop: 30,
-                                    fontSize: p.length < 26 ? 15 : 20
-                                }}>{index + 1}.-{p[0]}</p>
+                                <div style={{backgroundColor: color, display: "flex", justifyContent: "center"}}>
+                                    <p key={index} style={{
+                                        color: "#fff",
+                                        fontWeight: "bold",
+                                        paddingLeft: 10,
+                                        paddingRight: 10,
+                                        fontSize: 18
+                                    }}>{index + 1}.- {p[0].length < 15 ? p[0] : p[0].slice(0, 15) + "..."}</p>
+                                </div>
                             );
                         })}
                 </div>
-                <div style={{borderLeft: "1px solid black", margin: "0 10px"}}></div>
-                <div style={{flex: "1"}}>
-                    <div style={{display: "flex", marginBottom: 10}}>
-                        <p style={{color: "#fff", margin: "0 auto", fontWeight: "bold", fontSize: 20}}>{text}</p>
-                    </div>
-                    <div id="map" style={{marginTop: 0}}></div>
+                <div style={{marginLeft: "auto"}}>
+                    <div id="map" style={{marginTop: 50}}></div>
                 </div>
             </div>
-            <button onClick={() => play()}>Next</button>
-            <button onClick={() => exportAllData()}>Export Image</button>
-            <div>
+            <div style={{display: "flex", alignItems: "center"}}>
+                <button onClick={play}>Next</button>
                 <p>Export all images</p>
                 <input type="checkbox" checked={isChecked} onChange={() => setIsChecked(!isChecked)}/>
             </div>

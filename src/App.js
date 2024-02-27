@@ -63,6 +63,7 @@ const App = () => {
                     });
 
                     setProvincesMap(provincesAux);
+                    drawMap();
                 });
         } else if (next > 1) {
             play();
@@ -367,7 +368,7 @@ const App = () => {
                 </div>
             </div>
             <div style={{display: "flex", alignItems: "center"}}>
-                <button onClick={play}>Next</button>
+                <button onClick={play}>Start</button>
                 <p>Export all images</p>
                 <input type="checkbox" checked={isChecked} onChange={() => setIsChecked(!isChecked)}/>
             </div>

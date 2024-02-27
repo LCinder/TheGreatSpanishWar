@@ -346,19 +346,19 @@ const App = () => {
     return (
         <div>
             <div id="total" style={{display: "flex", alignItems: "center", backgroundColor: "#76a3ff"}}>
-                <div style={{flexWrap: "wrap", marginLeft: 100}}>
+                <div style={{display: "flex", flexDirection: "column", marginLeft: 100}}>
                     {getValues(provincesMap).sort((a, b) => b.length - a.length).slice(0, 10)
                         .map((p, index) => {
                             const color = getKeys(provincesMap).find(key => provincesMap[key].includes(p[0]));
                             return (
-                                <div style={{backgroundColor: color, display: "flex", justifyContent: "center"}}>
+                                <div style={{backgroundColor: color, display: "flex", justifyContent: "left"}}>
                                     <p key={index} style={{
                                         color: "#fff",
                                         fontWeight: "bold",
                                         paddingLeft: 10,
                                         paddingRight: 10,
                                         fontSize: 18
-                                    }}>{index + 1}.- {p[0].length < 15 ? p[0] : p[0].slice(0, 15) + "..."}</p>
+                                    }}>{index + 1}.- {p[0].length < 15 ? p[0].padEnd(15) : p[0].slice(0, 12) + "..."}</p>
                                 </div>
                             );
                         })}

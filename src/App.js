@@ -369,6 +369,7 @@ const App = () => {
             </div>
             <div style={{display: "flex", alignItems: "center"}}>
                 <button onClick={play}>Start</button>
+                <button onClick={exportAllData}>Export</button>
                 <p>Export all images</p>
                 <input type="checkbox" checked={isChecked} onChange={() => setIsChecked(!isChecked)}/>
             </div>
